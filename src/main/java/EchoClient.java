@@ -1,10 +1,13 @@
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.*;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.Executors;
 
 public class EchoClient {
 
@@ -19,25 +22,26 @@ public class EchoClient {
 			System.exit(1);
 		}
 
-		ChannelFactory factory = new NioClientSocketChannelFactory(
-				Executors.newCachedThreadPool(),
-				Executors.newCachedThreadPool());
+		Bootstrap bootstrap = new Bootstrap()
+				.channel(NioSocketChannel.class)
+				.group(new NioEventLoopGroup())
+				.handler(new ChannelInitializer<Channel>() {
 
-		ClientBootstrap bootstrap = new ClientBootstrap(factory);
-		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(new EchoClientHandler(numMessages
-						.get()));
-			}
-		});
-		bootstrap.setOption("tcpNoDelay", true);
-		bootstrap.setOption("keepAlive", true);
+					@Override
+					protected void initChannel(Channel ch) throws Exception {
+						ch.pipeline().addLast(
+								new EchoClientHandler(numMessages.get()));
+
+					}
+
+				}).option(ChannelOption.TCP_NODELAY, true)
+				.option(ChannelOption.SO_KEEPALIVE, true);
 
 		final ChannelFuture f = bootstrap.connect(new InetSocketAddress(
 				"127.0.0.1", 8080));
 
-		f.getChannel().getCloseFuture().awaitUninterruptibly();
-		factory.releaseExternalResources();
+		f.channel().closeFuture().awaitUninterruptibly();
+		bootstrap.group().shutdownGracefully().awaitUninterruptibly();
 	}
 
 }

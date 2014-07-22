@@ -1,8 +1,9 @@
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.*;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 
-public class EchoClientHandler extends SimpleChannelHandler {
+public class EchoClientHandler extends ChannelInboundHandlerAdapter {
 
 	private int msgsRcvd;
 	private long totalTimeSpent;
@@ -10,24 +11,24 @@ public class EchoClientHandler extends SimpleChannelHandler {
 
 	private final long numMessages;
 
-	private final ChannelBuffer time = ChannelBuffers.buffer(8);
+	private final ByteBuf time = Unpooled.buffer(8);
 
 	public EchoClientHandler(long numMessages) {
 		this.numMessages = numMessages;
 	}
 
 	@Override
-	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e)
-			throws Exception {
+	public void channelActive(ChannelHandlerContext ctx) throws Exception {
+		super.channelActive(ctx);
 		time.writerIndex(0);
 		time.writeLong(System.currentTimeMillis());
-		e.getChannel().write(time);
+		ctx.channel().writeAndFlush(time.retain());
 	}
 
 	@Override
-	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e)
+	public void channelRead(ChannelHandlerContext ctx, Object msg)
 			throws Exception {
-		ChannelBuffer buf = (ChannelBuffer) e.getMessage();
+		ByteBuf buf = (ByteBuf) msg;
 
 		if (buf.readableBytes() < 8) {
 			return;
@@ -43,19 +44,19 @@ public class EchoClientHandler extends SimpleChannelHandler {
 
 		if (msgsRcvd >= numMessages) {
 			System.out.printf("Mean: %.4fms\n", meanTimeSpent);
-			e.getChannel().close();
+			ctx.channel().close();
 		} else {
 			time.resetWriterIndex();
 			time.writeLong(System.currentTimeMillis());
-			e.getChannel().write(time);
+			ctx.channel().writeAndFlush(time.retain());
 		}
 	}
 
 	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
 			throws Exception {
-		e.getCause().printStackTrace();
-		e.getChannel().close();
+		cause.printStackTrace();
+		ctx.channel().close();
 	}
 
 }

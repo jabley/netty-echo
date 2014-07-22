@@ -1,21 +1,19 @@
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 
-public class EchoServerHandler extends SimpleChannelHandler {
+public class EchoServerHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
-	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e)
+	public void channelRead(ChannelHandlerContext ctx, Object msg)
 			throws Exception {
-		e.getChannel().write(e.getMessage());
+		ctx.writeAndFlush(msg);
 	}
 
 	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
 			throws Exception {
-		e.getCause().printStackTrace();
-		e.getChannel().close();
+		cause.printStackTrace();
+		ctx.channel().close();
 	}
 
 }

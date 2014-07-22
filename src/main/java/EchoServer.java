@@ -1,28 +1,26 @@
-import org.jboss.netty.bootstrap.ServerBootstrap;
-import org.jboss.netty.channel.ChannelFactory;
-import org.jboss.netty.channel.ChannelPipeline;
-import org.jboss.netty.channel.ChannelPipelineFactory;
-import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.Executors;
 
 public class EchoServer {
 
 	public static void main(String[] args) {
-		ChannelFactory factory = new NioServerSocketChannelFactory(
-				Executors.newCachedThreadPool(),
-				Executors.newCachedThreadPool());
+		ServerBootstrap bootstrap = new ServerBootstrap()
+				.channel(NioServerSocketChannel.class)
+				.group(new NioEventLoopGroup(), new NioEventLoopGroup())
+				.childHandler(new ChannelInitializer<Channel>() {
 
-		ServerBootstrap bootstrap = new ServerBootstrap(factory);
-		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(new EchoServerHandler());
-			}
-		});
-		bootstrap.setOption("child.tcpNoDelay", true);
-		bootstrap.setOption("child.keepAlive", true);
+					@Override
+					protected void initChannel(Channel ch) throws Exception {
+						ch.pipeline().addLast(new EchoServerHandler());
+					}
+				}).childOption(ChannelOption.TCP_NODELAY, true)
+				.childOption(ChannelOption.SO_KEEPALIVE, true);
 		bootstrap.bind(new InetSocketAddress("127.0.0.1", 8080));
 	}
 
